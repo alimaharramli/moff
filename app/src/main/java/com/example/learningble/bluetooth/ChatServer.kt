@@ -56,6 +56,9 @@ object ChatServer {
     private val scanResults = mutableMapOf<String, BluetoothDevice>()
     private var scanCallback: ScanCallback? = null
 
+    private lateinit var scanFilters: List<ScanFilter>
+    private lateinit var scanSettings: ScanSettings
+
     fun startServer(app: Application) {
         Log.d(TAG, "Starting server")
         this.app = app
@@ -136,12 +139,29 @@ object ChatServer {
             .build()
     }
 
+    private fun buildScanFilters(): List<ScanFilter> {
+        val builder = ScanFilter.Builder()
+        builder.setServiceUuid(ParcelUuid(SERVICE_UUID))
+        val filter = builder.build()
+        return listOf(filter)
+    }
+
+
+    private fun buildScanSettings(): ScanSettings {
+        return ScanSettings.Builder()
+            .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
+            .build()
+    }
+
     private fun startScanning() {
         Log.d(TAG, "Starting scan")
+        scanFilters = buildScanFilters()
+        scanSettings = buildScanSettings()
         scanner = adapter.bluetoothLeScanner
         scanResults.clear()
         scanCallback = object : ScanCallback() {
             override fun onScanResult(callbackType: Int, result: ScanResult) {
+                super.onScanResult(callbackType, result)
                 result.device?.let { device ->
                     scanResults[device.address] = device
                     Log.d(TAG, "Found device: ${device.name ?: "Unnamed Device"} - ${device.address}, RSSI: ${result.rssi}")
@@ -149,6 +169,7 @@ object ChatServer {
             }
 
             override fun onBatchScanResults(results: List<ScanResult>) {
+                super.onBatchScanResults(results)
                 results.forEach { result ->
                     result.device?.let { device ->
                         scanResults[device.address] = device
@@ -158,10 +179,11 @@ object ChatServer {
             }
 
             override fun onScanFailed(errorCode: Int) {
+                super.onScanFailed(errorCode)
                 Log.e(TAG, "Scan failed with error: $errorCode")
             }
         }
-        scanner?.startScan(scanCallback)
+        scanner?.startScan(scanFilters, scanSettings, scanCallback)
     }
 
 
