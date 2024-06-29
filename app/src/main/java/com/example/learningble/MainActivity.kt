@@ -9,23 +9,26 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.activity.viewModels
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.*
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.runtime.*
-import androidx.compose.runtime.livedata.observeAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.learningble.bluetooth.ChatServer
-import com.example.learningble.presentation.ChatCompose
-import com.example.learningble.presentation.DeviceScanCompose
-import com.example.learningble.states.DeviceConnectionState
+import com.example.learningble.presentation.BroadcastForm
 import com.example.learningble.ui.theme.LearningBLETheme
-import com.example.learningble.viewmodels.DeviceScanViewModel
 import com.karumi.dexter.Dexter
 import com.karumi.dexter.MultiplePermissionsReport
 import com.karumi.dexter.PermissionToken
@@ -36,11 +39,47 @@ private const val TAG = "MainActivityTAG"
 
 class MainActivity : ComponentActivity() {
 
-    private val viewModel: DeviceScanViewModel by viewModels()
-
     override fun onStop() {
         super.onStop()
         ChatServer.stopServer()
+    }
+
+    @Composable
+    fun CustomTopAppBar() {
+        Column {
+            TopAppBar(
+                title = {},
+                navigationIcon = {
+                    IconButton(onClick = { /* Handle back navigation */ }) {
+                        Icon(
+                            imageVector = Icons.Default.ArrowBack,
+                            contentDescription = "Back"
+                        )
+                    }
+                },
+                actions = {
+                    Box(
+                        contentAlignment = Alignment.Center,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clip(CircleShape)
+                            .background(Color.LightGray)
+                            .border(BorderStroke(1.dp, Color.Gray), CircleShape)
+                    ) {
+                        Text(
+                            text = "MA",
+                            textAlign = TextAlign.Center,
+                            color = Color.Black
+                        )
+                    }
+                },
+                backgroundColor = Color.White,
+                contentColor = Color.Black,
+                elevation = 0.dp,
+                modifier = Modifier.fillMaxWidth()
+            )
+            Divider(color = Color.Gray, thickness = 1.dp)
+        }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -54,7 +93,6 @@ class MainActivity : ComponentActivity() {
                 }
 
                 LaunchedEffect(key1 = true){
-
                     Dexter.withContext(this@MainActivity)
                         .withPermissions(
                             Manifest.permission.ACCESS_COARSE_LOCATION,
@@ -79,69 +117,27 @@ class MainActivity : ComponentActivity() {
                             }
                         })
                         .check()
-
                 }
 
                 LaunchedEffect(key1 = result.value){
                     if(result.value == RESULT_OK){
                         ChatServer.startServer(application)
-                        viewModel.startScan()
                     }
                 }
 
                 Scaffold(topBar = {
-                    TopAppBar(
-                        title = {
-                            Text(text = "Bluetooth Chat App")
-                        },
-                        backgroundColor = MaterialTheme.colors.primary,
-                        contentColor = Color.White,
-                        elevation = 10.dp
-                    )
+                    CustomTopAppBar()
                 }) {
-
-
                     Surface(
                         modifier = Modifier
                             .fillMaxSize()
                             .padding(10.dp),
                         color = MaterialTheme.colors.background
                     ) {
-                        val deviceScanningState by viewModel.viewState.observeAsState()
-
-                        val deviceConnectionState by ChatServer.deviceConnection.observeAsState()
-
-                        var isChatOpen by remember {
-                            mutableStateOf(false)
-                        }
-
-                        Box(
-                            contentAlignment = Alignment.TopCenter,
-                            modifier = Modifier.fillMaxSize()
-                        ) {
-                            if (deviceScanningState != null && !isChatOpen || deviceConnectionState == DeviceConnectionState.Disconnected) {
-                                Column {
-                                    Text(
-                                        text = "Choose a device to chat with:",
-                                        fontSize = 20.sp,
-                                        fontWeight = FontWeight.Bold
-                                    )
-                                    Spacer(modifier = Modifier.height(10.dp))
-                                    DeviceScanCompose.DeviceScan(deviceScanViewState = deviceScanningState!!) {
-                                        isChatOpen = true
-                                    }
-                                }
-
-                            } else if (deviceScanningState != null && deviceConnectionState is DeviceConnectionState.Connected) {
-                                ChatCompose.Chats((deviceConnectionState as DeviceConnectionState.Connected).device.name)
-                            } else {
-                                Text(text = "Nothing")
-                            }
-                        }
+                        BroadcastForm()
                     }
                 }
             }
         }
-
     }
 }

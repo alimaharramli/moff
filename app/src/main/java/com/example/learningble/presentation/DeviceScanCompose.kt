@@ -86,7 +86,7 @@ object DeviceScanCompose {
             is DeviceScanViewState.ScanResults -> {
                 ShowDevices(scanResults = deviceScanViewState.scanResults, onClick = {
                     Log.i(TAG, "Device Selected ${it!!.name ?: ""}")
-                    ChatServer.setCurrentChatConnection(device = it!!)
+//                    ChatServer.setCurrentChatConnection(device = it!!)
                     onDeviceSelected()
                 })
             }

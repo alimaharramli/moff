@@ -137,7 +137,7 @@ object ChatCompose {
             Button(
                 onClick = {
                     if (inputvalue.value.text.isNotEmpty()) {
-                        ChatServer.sendMessage(inputvalue.value.text)
+//                        ChatServer.sendMessage(inputvalue.value.text)
                         inputvalue.value = TextFieldValue()
                     }
                 },
