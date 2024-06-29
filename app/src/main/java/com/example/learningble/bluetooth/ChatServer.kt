@@ -1,11 +1,14 @@
 package com.example.learningble.bluetooth
 
 import android.app.Application
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.PendingIntent
 import android.bluetooth.*
 import android.bluetooth.le.*
 import android.content.Context
 import android.content.Intent
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.os.ParcelUuid
@@ -66,6 +69,7 @@ object ChatServer {
         adapter = bluetoothManager.adapter
         setupGattServer(app)
         startAdvertisement()
+        createNotificationChannel(context = app)
         Log.d(TAG, "Server started")
     }
 
@@ -336,6 +340,20 @@ object ChatServer {
             }
             Log.d(TAG, "Notification cancelled after 30 seconds")
         }, 30000)
+    }
+
+    private fun createNotificationChannel(context: Context) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            val name = "Chat Notifications"
+            val descriptionText = "Notifications for chat messages"
+            val importance = NotificationManager.IMPORTANCE_DEFAULT
+            val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
+                description = descriptionText
+            }
+            val notificationManager: NotificationManager =
+                context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+            notificationManager.createNotificationChannel(channel)
+        }
     }
 
     private class DeviceAdvertiseCallback : AdvertiseCallback() {
