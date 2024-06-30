@@ -17,7 +17,7 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
-import com.example.learningble.MainActivity
+import com.example.learningble.NotificationActivity
 import com.example.learningble.models.Message
 import com.example.learningble.models.TransactionMessage
 import com.example.learningble.states.DeviceConnectionState
@@ -140,7 +140,7 @@ object ChatServer {
     private fun buildAdvertiseSettings(): AdvertiseSettings {
         Log.d(TAG, "Building advertise settings")
         return AdvertiseSettings.Builder()
-            .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_POWER)
+            .setAdvertiseMode(AdvertiseSettings.ADVERTISE_MODE_LOW_LATENCY)
             .setTimeout(0)
             .build()
     }
@@ -155,7 +155,7 @@ object ChatServer {
 
     private fun buildScanSettings(): ScanSettings {
         return ScanSettings.Builder()
-            .setScanMode(ScanSettings.SCAN_MODE_LOW_POWER)
+            .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
             .build()
     }
 
@@ -252,12 +252,12 @@ object ChatServer {
                     val characteristic = service?.getCharacteristic(MESSAGE_UUID)
                     if (characteristic != null) {
                         characteristic.value = message.toByteArray(Charsets.UTF_8)
-                        gatt.requestMtu(512)
-                        val success = gatt.writeCharacteristic(characteristic)
-                        Log.d(
-                            TAG,
-                            "Writing message to device: ${device.name ?: "Unnamed Device"} - ${device.address}, success: $success"
-                        )
+                        gatt.requestMtu(256)
+//                        val success = gatt.writeCharacteristic(characteristic)
+//                        Log.d(
+//                            TAG,
+//                            "Writing message to device: ${device.name ?: "Unnamed Device"} - ${device.address}, success: $success"
+//                        )
                     } else {
                         Log.e(
                             TAG,
@@ -345,17 +345,21 @@ object ChatServer {
 
     private fun showNotification(context: Context, message: String) {
         val gson = Gson()
-        val msgObj = gson.fromJson(message, TransactionMessage::class.java);
+        val msgObj = gson.fromJson(message, TransactionMessage::class.java)
         Log.d(TAG, "Preparing to show notification for message: $message")
 
         val notificationManager: NotificationManagerCompat = NotificationManagerCompat.from(context)
         Log.d(TAG, "NotificationManagerCompat created")
 
-        val intent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        // Create an intent for NotificationActivity and pass the message data
+        val intent = Intent(context, NotificationActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            Log.d("NOTIFICATION_MESSAGE_PASSED",message)
+            putExtra("message", message)
         }
+
         val pendingIntent: PendingIntent =
-            PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+            PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         Log.d(TAG, "PendingIntent created")
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
