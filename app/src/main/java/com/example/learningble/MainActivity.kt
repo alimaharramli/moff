@@ -39,10 +39,10 @@ private const val TAG = "MainActivityTAG"
 
 class MainActivity : ComponentActivity() {
 
-    override fun onStop() {
-        super.onStop()
-        ChatServer.stopServer()
-    }
+//    override fun onStop() {
+//        super.onStop()
+//        ChatServer.stopServer()
+//    }
 
     @Composable
     fun CustomTopAppBar() {
@@ -119,11 +119,11 @@ class MainActivity : ComponentActivity() {
                         .check()
                 }
 
-                LaunchedEffect(key1 = result.value){
-                    if(result.value == RESULT_OK){
+//                LaunchedEffect(key1 = result.value){
+//                    if(result.value == RESULT_OK){
                         ChatServer.startServer(application)
-                    }
-                }
+//                    }
+//                }
 
                 Scaffold(topBar = {
                     CustomTopAppBar()
