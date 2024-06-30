@@ -8,6 +8,7 @@ import android.bluetooth.*
 import android.bluetooth.le.*
 import android.content.Context
 import android.content.Intent
+import android.graphics.Color
 import android.os.Build
 import android.os.Handler
 import android.os.Looper
@@ -353,7 +354,6 @@ object ChatServer {
         val notificationManager: NotificationManagerCompat = NotificationManagerCompat.from(context)
         Log.d(TAG, "NotificationManagerCompat created")
 
-        // Create an intent for NotificationActivity and pass the message data
         val intent = Intent(context, NotificationActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
             Log.d("NOTIFICATION_MESSAGE_PASSED", message)
@@ -368,9 +368,10 @@ object ChatServer {
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setContentTitle("Send ${msgObj.amount} ${msgObj.currency} to ${msgObj.receiver.name}")
             .setContentText(msgObj.message)
-            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setPriority(NotificationCompat.PRIORITY_HIGH) // Use high priority
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
+            .setDefaults(NotificationCompat.DEFAULT_ALL) // Use default sound, vibration, and lights
 
         Log.d(TAG, "NotificationCompat.Builder created")
 
@@ -388,14 +389,19 @@ object ChatServer {
     }
 
 
+
     private fun createNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val channel = NotificationChannel(
                 CHANNEL_ID,
-                "mOff Request",
-                NotificationManager.IMPORTANCE_DEFAULT
+                "mOFF",
+                NotificationManager.IMPORTANCE_HIGH // Set to high importance
             ).apply {
                 description = "Someone requests money"
+                enableLights(true)
+                lightColor = Color.RED
+                enableVibration(true)
+                vibrationPattern = longArrayOf(0, 1000, 500, 1000)
             }
             val notificationManager: NotificationManager =
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
