@@ -36,6 +36,9 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.example.learningble.NotificationActivity
+import com.example.learningble.R
+import com.example.learningble.SuccessActivity
+import com.example.learningble.currentBalance
 import com.example.learningble.dto.TransactionDto
 import com.example.learningble.models.Message
 import com.example.learningble.models.TransactionMessage
@@ -376,7 +379,7 @@ object ChatServer {
                             } else {
                                 val transactionDto =
                                     gson.fromJson(message, TransactionDto::class.java)
-                                sendTransaction(transactionDto)
+                                sendTransaction(appContext, transactionDto)
                             }
                         }
 
@@ -386,10 +389,21 @@ object ChatServer {
         }
     }
 
-    private fun sendTransaction(transactionDto: TransactionDto) {
+    private fun sendTransaction(context: Context, transactionDto: TransactionDto) {
         val resp = apiInterface.makeTransaction(transactionDto).execute()
 
         if (resp.isSuccessful) {
+            currentBalance += transactionDto.amount
+            val intent = Intent(context, SuccessActivity::class.java).apply {
+                flags =
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NEW_TASK
+                putExtra("amount", "+" + transactionDto.amount.toString())
+                putExtra("status", "Done")
+                putExtra("cardInfo", "To m10 Balance (offline client transaction)")
+                putExtra("balance", "Current balance: ${currentBalance}₼")
+            }
+
+            context.startActivity(intent)
             Log.d(TAG, "Transaction successful")
         } else {
             Log.e(TAG, "Transaction failed")
@@ -423,7 +437,7 @@ object ChatServer {
         Log.d(TAG, "PendingIntent created")
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
-            .setSmallIcon(android.R.drawable.ic_dialog_info)
+            .setSmallIcon(R.drawable.m10)
             .setContentTitle("Send ${msgObj.amount} ${msgObj.currency} to ${msgObj.receiver.name}")
             .setContentText(msgObj.message)
             .setPriority(NotificationCompat.PRIORITY_HIGH) // Use high priority
