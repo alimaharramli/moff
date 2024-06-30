@@ -134,18 +134,11 @@ class MainActivity : ComponentActivity() {
                             .padding(10.dp),
                         color = MaterialTheme.colors.background
                     ) {
-//                        Button(onClick = { openNotificationActivity() }) {
-//                            Text(text = "Open Notification Activity")
-//                        }
                         BroadcastForm()
                     }
                 }
             }
         }
-    }
-    private fun openNotificationActivity() {
-        val intent = Intent(this, NotificationActivity::class.java)
-        startActivity(intent)
     }
 
 }
