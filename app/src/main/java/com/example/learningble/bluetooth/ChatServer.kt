@@ -348,13 +348,15 @@ object ChatServer {
         val msgObj = gson.fromJson(message, TransactionMessage::class.java)
         Log.d(TAG, "Preparing to show notification for message: $message")
 
+        createNotificationChannel(context) // Ensure the notification channel is created
+
         val notificationManager: NotificationManagerCompat = NotificationManagerCompat.from(context)
         Log.d(TAG, "NotificationManagerCompat created")
 
         // Create an intent for NotificationActivity and pass the message data
         val intent = Intent(context, NotificationActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
-            Log.d("NOTIFICATION_MESSAGE_PASSED",message)
+            Log.d("NOTIFICATION_MESSAGE_PASSED", message)
             putExtra("message", message)
         }
 
@@ -385,19 +387,22 @@ object ChatServer {
         }, 30000)
     }
 
+
     private fun createNotificationChannel(context: Context) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val name = "Chat Notifications"
-            val descriptionText = "Notifications for chat messages"
-            val importance = NotificationManager.IMPORTANCE_DEFAULT
-            val channel = NotificationChannel(CHANNEL_ID, name, importance).apply {
-                description = descriptionText
+            val channel = NotificationChannel(
+                CHANNEL_ID,
+                "mOff Request",
+                NotificationManager.IMPORTANCE_DEFAULT
+            ).apply {
+                description = "Someone requests money"
             }
             val notificationManager: NotificationManager =
                 context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
             notificationManager.createNotificationChannel(channel)
         }
     }
+
 
     private class DeviceAdvertiseCallback : AdvertiseCallback() {
         override fun onStartFailure(errorCode: Int) {
