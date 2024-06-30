@@ -4,8 +4,25 @@ import android.app.Application
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
-import android.bluetooth.*
-import android.bluetooth.le.*
+import android.bluetooth.BluetoothAdapter
+import android.bluetooth.BluetoothDevice
+import android.bluetooth.BluetoothGatt
+import android.bluetooth.BluetoothGattCallback
+import android.bluetooth.BluetoothGattCharacteristic
+import android.bluetooth.BluetoothGattServer
+import android.bluetooth.BluetoothGattServerCallback
+import android.bluetooth.BluetoothGattService
+import android.bluetooth.BluetoothManager
+import android.bluetooth.BluetoothProfile
+import android.bluetooth.le.AdvertiseCallback
+import android.bluetooth.le.AdvertiseData
+import android.bluetooth.le.AdvertiseSettings
+import android.bluetooth.le.BluetoothLeAdvertiser
+import android.bluetooth.le.BluetoothLeScanner
+import android.bluetooth.le.ScanCallback
+import android.bluetooth.le.ScanFilter
+import android.bluetooth.le.ScanResult
+import android.bluetooth.le.ScanSettings
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
@@ -19,16 +36,23 @@ import androidx.core.app.NotificationManagerCompat
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.example.learningble.NotificationActivity
+import com.example.learningble.dto.TransactionDto
 import com.example.learningble.models.Message
 import com.example.learningble.models.TransactionMessage
+import com.example.learningble.repo.TransactionRepo
 import com.example.learningble.states.DeviceConnectionState
 import com.example.learningble.utils.MESSAGE_UUID
 import com.example.learningble.utils.SERVICE_UUID
 import com.google.gson.Gson
+import com.google.gson.JsonElement
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
+import okhttp3.OkHttpClient
+import okhttp3.logging.HttpLoggingInterceptor
 import org.json.JSONObject
+import retrofit2.Retrofit
+import retrofit2.converter.gson.GsonConverterFactory
 
 private const val TAG = "ChatServerTAG"
 private const val CHANNEL_ID = "ChatNotificationChannel"
@@ -64,6 +88,7 @@ object ChatServer {
 
     private lateinit var scanFilters: List<ScanFilter>
     private lateinit var scanSettings: ScanSettings
+    private var apiInterface = getApiInterface()
 
     fun startServer(app: Application) {
         Log.d(TAG, "Starting server")
@@ -210,12 +235,12 @@ object ChatServer {
     suspend fun broadcastMessage(amount: String, description: String) {
         val data = JSONObject().apply {
             put("receiver", JSONObject().apply {
-                put("name", "Jane Smith")
-                put("phone_number", "+0987654321")
-                put("account_id", "receiver_account_456")
+                put("name", "Nadir")
+                put("phoneNumber", "+0987654321")
+                put("accountId", "receiver_account_456")
             })
             put("amount", amount.toDouble())
-            put("currency", "USD")
+            put("currency", "AZN")
             put("timestamp", System.currentTimeMillis())
             put("message", description)
             put("status", "pending")
@@ -252,7 +277,7 @@ object ChatServer {
                     val service = gatt.getService(SERVICE_UUID)
                     val characteristic = service?.getCharacteristic(MESSAGE_UUID)
                     if (characteristic != null) {
-                        characteristic.value = message.toByteArray(Charsets.UTF_8)
+//                        characteristic.value = message.toByteArray(Charsets.UTF_8)
                         gatt.requestMtu(256)
 //                        val success = gatt.writeCharacteristic(characteristic)
 //                        Log.d(
@@ -341,10 +366,33 @@ object ChatServer {
                     _messages.postValue(Message.RemoteMessage(it))
                     app?.let { appContext ->
                         Log.d(TAG, "Calling showNotification with message: $it")
-                        showNotification(appContext, it, device.toString())
+                        val gson = Gson()
+                        val jsonElement = gson.fromJson(message, JsonElement::class.java)
+                        if (jsonElement.isJsonObject) {
+                            val obj = jsonElement.asJsonObject
+                            val type = obj.get("type")
+                            if (type == null) {
+                                showNotification(appContext, it, device.toString())
+                            } else {
+                                val transactionDto =
+                                    gson.fromJson(message, TransactionDto::class.java)
+                                sendTransaction(transactionDto)
+                            }
+                        }
+
                     }
                 }
             }
+        }
+    }
+
+    private fun sendTransaction(transactionDto: TransactionDto) {
+        val resp = apiInterface.makeTransaction(transactionDto).execute()
+
+        if (resp.isSuccessful) {
+            Log.d(TAG, "Transaction successful")
+        } else {
+            Log.e(TAG, "Transaction failed")
         }
     }
 
@@ -366,7 +414,12 @@ object ChatServer {
         }
 
         val pendingIntent: PendingIntent =
-            PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+            PendingIntent.getActivity(
+                context,
+                0,
+                intent,
+                PendingIntent.FLAG_CANCEL_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            )
         Log.d(TAG, "PendingIntent created")
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
@@ -392,8 +445,6 @@ object ChatServer {
             Log.d(TAG, "Notification cancelled after 30 seconds")
         }, 30000)
     }
-
-
 
 
     private fun createNotificationChannel(context: Context) {
@@ -428,4 +479,25 @@ object ChatServer {
             Log.d(TAG, "Advertisement started successfully with settings: $settingsInEffect")
         }
     }
+
+    private fun getApiInterface(): TransactionRepo {
+        return RetrofitInstance.getInstance().create(TransactionRepo::class.java)
+    }
+
+    object RetrofitInstance {
+        private const val BASE_URL = "http://192.168.79.135:8080/"
+
+        fun getInstance(): Retrofit {
+            val client = OkHttpClient()
+            val interceptor = HttpLoggingInterceptor().setLevel(HttpLoggingInterceptor.Level.BODY)
+            val clientBuilder: OkHttpClient.Builder =
+                client.newBuilder().addInterceptor(interceptor as HttpLoggingInterceptor)
+
+            return Retrofit.Builder().baseUrl(BASE_URL)
+                .addConverterFactory(GsonConverterFactory.create())
+                .client(clientBuilder.build())
+                .build()
+        }
+    }
+
 }

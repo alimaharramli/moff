@@ -49,7 +49,7 @@ class NotificationActivity : ComponentActivity() {
                 Log.d("STORED_DEVICE",device.toString())
                 // You can now interact with the device
                 val currentDevice = connectedDevices[device.address] as BluetoothDevice
-                val transaction = TransactionDto(msgObj.amount, msgObj.timestamp, msgObj.receiver.phoneNumber, PHONE_NUMBER)
+                val transaction = TransactionDto(msgObj.amount, msgObj.timestamp, msgObj.receiver.phoneNumber, PHONE_NUMBER, 1)
                 connectToDeviceAndSendMessage(currentDevice, Gson().toJson(transaction))
             }
         }

@@ -6,5 +6,6 @@ data class TransactionDto (
     val amount: BigDecimal,
     val date: Long,
     val from: String,
-    val to: String
+    val to: String,
+    val type: Int
 )
