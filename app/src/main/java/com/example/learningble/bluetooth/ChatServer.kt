@@ -237,7 +237,7 @@ object ChatServer {
         }
     }
 
-    private fun connectToDeviceAndSendMessage(device: BluetoothDevice, message: String) {
+    fun connectToDeviceAndSendMessage(device: BluetoothDevice, message: String) {
         val gattClientCallback = object : BluetoothGattCallback() {
             override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
                 if (status == BluetoothGatt.GATT_SUCCESS && newState == BluetoothProfile.STATE_CONNECTED) {
@@ -291,6 +291,7 @@ object ChatServer {
         device.connectGatt(app, false, gattClientCallback)
     }
 
+    val connectedDevices = mutableMapOf<String, BluetoothDevice>()
 
     private class GattServerCallback : BluetoothGattServerCallback() {
         override fun onConnectionStateChange(device: BluetoothDevice, status: Int, newState: Int) {
@@ -299,13 +300,16 @@ object ChatServer {
             val isConnected = newState == BluetoothProfile.STATE_CONNECTED
             Log.d(TAG, "onConnectionStateChange: isSuccess=$isSuccess, isConnected=$isConnected")
             if (isSuccess && isConnected) {
+                connectedDevices[device.address] = device
                 _deviceConnection.postValue(DeviceConnectionState.Connected(device))
                 Log.d(TAG, "Device connected: ${device.address}")
             } else {
+                connectedDevices.remove(device.address)
                 _deviceConnection.postValue(DeviceConnectionState.Disconnected)
                 Log.d(TAG, "Device disconnected or connection failed: ${device.address}")
             }
         }
+
 
         override fun onCharacteristicWriteRequest(
             device: BluetoothDevice,
@@ -337,14 +341,14 @@ object ChatServer {
                     _messages.postValue(Message.RemoteMessage(it))
                     app?.let { appContext ->
                         Log.d(TAG, "Calling showNotification with message: $it")
-                        showNotification(appContext, it)
+                        showNotification(appContext, it, device.toString())
                     }
                 }
             }
         }
     }
 
-    private fun showNotification(context: Context, message: String) {
+    private fun showNotification(context: Context, message: String, deviceAddress: String) {
         val gson = Gson()
         val msgObj = gson.fromJson(message, TransactionMessage::class.java)
         Log.d(TAG, "Preparing to show notification for message: $message")
@@ -358,6 +362,7 @@ object ChatServer {
             flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
             Log.d("NOTIFICATION_MESSAGE_PASSED", message)
             putExtra("message", message)
+            putExtra("device_address", deviceAddress)
         }
 
         val pendingIntent: PendingIntent =
@@ -387,6 +392,7 @@ object ChatServer {
             Log.d(TAG, "Notification cancelled after 30 seconds")
         }, 30000)
     }
+
 
 
 

@@ -36,7 +36,7 @@ import com.karumi.dexter.listener.PermissionRequest
 import com.karumi.dexter.listener.multi.MultiplePermissionsListener
 
 private const val TAG = "MainActivityTAG"
-
+public const val PHONE_NUMBER = "+994556098874"
 class MainActivity : ComponentActivity() {
 
 //    override fun onStop() {
