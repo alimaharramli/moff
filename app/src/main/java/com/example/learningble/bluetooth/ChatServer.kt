@@ -24,7 +24,6 @@ import com.example.learningble.models.TransactionMessage
 import com.example.learningble.states.DeviceConnectionState
 import com.example.learningble.utils.MESSAGE_UUID
 import com.example.learningble.utils.SERVICE_UUID
-import com.example.learningble.utils.TRANSACTION_UUID
 import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -212,8 +211,8 @@ object ChatServer {
         val data = JSONObject().apply {
             put("receiver", JSONObject().apply {
                 put("name", "Jane Smith")
-                put("phoneNumber", "+0987654321")
-                put("accountId", "receiver_account_456")
+                put("phone_number", "+0987654321")
+                put("account_id", "receiver_account_456")
             })
             put("amount", amount.toDouble())
             put("currency", "USD")
@@ -233,12 +232,12 @@ object ChatServer {
             Log.d(TAG, "Starting broadcast to found devices one by one")
 
             scanResults.values.forEach { device ->
-                connectToDeviceAndSendMessage(device, message, 0)
+                connectToDeviceAndSendMessage(device, message)
             }
         }
     }
 
-    fun connectToDeviceAndSendMessage(device: BluetoothDevice, message: String, type: Int) {
+    fun connectToDeviceAndSendMessage(device: BluetoothDevice, message: String) {
         val gattClientCallback = object : BluetoothGattCallback() {
             override fun onConnectionStateChange(gatt: BluetoothGatt, status: Int, newState: Int) {
                 if (status == BluetoothGatt.GATT_SUCCESS && newState == BluetoothProfile.STATE_CONNECTED) {
@@ -251,10 +250,7 @@ object ChatServer {
             override fun onServicesDiscovered(gatt: BluetoothGatt, status: Int) {
                 if (status == BluetoothGatt.GATT_SUCCESS) {
                     val service = gatt.getService(SERVICE_UUID)
-                    var characteristic = service?.getCharacteristic(MESSAGE_UUID)
-                    if (type == 1) {
-                        characteristic = service?.getCharacteristic(TRANSACTION_UUID)
-                    }
+                    val characteristic = service?.getCharacteristic(MESSAGE_UUID)
                     if (characteristic != null) {
                         characteristic.value = message.toByteArray(Charsets.UTF_8)
                         gatt.requestMtu(256)
