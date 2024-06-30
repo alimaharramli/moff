@@ -19,9 +19,11 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.example.learningble.MainActivity
 import com.example.learningble.models.Message
+import com.example.learningble.models.TransactionMessage
 import com.example.learningble.states.DeviceConnectionState
 import com.example.learningble.utils.MESSAGE_UUID
 import com.example.learningble.utils.SERVICE_UUID
+import com.google.gson.Gson
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.withContext
@@ -168,7 +170,10 @@ object ChatServer {
                 super.onScanResult(callbackType, result)
                 result.device?.let { device ->
                     scanResults[device.address] = device
-                    Log.d(TAG, "Found device: ${device.name ?: "Unnamed Device"} - ${device.address}, RSSI: ${result.rssi}")
+                    Log.d(
+                        TAG,
+                        "Found device: ${device.name ?: "Unnamed Device"} - ${device.address}, RSSI: ${result.rssi}"
+                    )
                 }
             }
 
@@ -177,7 +182,10 @@ object ChatServer {
                 results.forEach { result ->
                     result.device?.let { device ->
                         scanResults[device.address] = device
-                        Log.d(TAG, "Found device: ${device.name ?: "Unnamed Device"} - ${device.address}, RSSI: ${result.rssi}")
+                        Log.d(
+                            TAG,
+                            "Found device: ${device.name ?: "Unnamed Device"} - ${device.address}, RSSI: ${result.rssi}"
+                        )
                     }
                 }
             }
@@ -189,7 +197,6 @@ object ChatServer {
         }
         scanner?.startScan(scanFilters, scanSettings, scanCallback)
     }
-
 
 
     private fun stopScanning() {
@@ -218,12 +225,13 @@ object ChatServer {
 
         withContext(Dispatchers.IO) {
             startScanning()
-            delay(3000) // Wait for 10 seconds to gather scan results
+            delay(5000) // Wait for 10 seconds to gather scan results
             stopScanning()
 
             Log.d(TAG, "Starting broadcast to found devices one by one")
+
             scanResults.values.forEach { device ->
-//                connectToDeviceAndSendMessage(device, message)
+                connectToDeviceAndSendMessage(device, message)
             }
         }
     }
@@ -244,18 +252,43 @@ object ChatServer {
                     val characteristic = service?.getCharacteristic(MESSAGE_UUID)
                     if (characteristic != null) {
                         characteristic.value = message.toByteArray(Charsets.UTF_8)
+                        gatt.requestMtu(512)
                         val success = gatt.writeCharacteristic(characteristic)
-                        Log.d(TAG, "Writing message to device: ${device.name ?: "Unnamed Device"} - ${device.address}, success: $success")
+                        Log.d(
+                            TAG,
+                            "Writing message to device: ${device.name ?: "Unnamed Device"} - ${device.address}, success: $success"
+                        )
                     } else {
-                        Log.e(TAG, "Characteristic not found on device: ${device.name ?: "Unnamed Device"} - ${device.address}")
+                        Log.e(
+                            TAG,
+                            "Characteristic not found on device: ${device.name ?: "Unnamed Device"} - ${device.address}"
+                        )
                     }
                 }
-                gatt.close()
+                // gatt.close()
+            }
+
+            override fun onMtuChanged(gatt: BluetoothGatt?, mtu: Int, status: Int) {
+                super.onMtuChanged(gatt, mtu, status)
+                val service = gatt?.getService(SERVICE_UUID)
+                val characteristic = service?.getCharacteristic(MESSAGE_UUID)
+                if (characteristic != null) {
+                    characteristic.value = message.toByteArray(Charsets.UTF_8)
+                    val success = gatt.writeCharacteristic(characteristic)
+                    Log.d(
+                        TAG,
+                        "Writing message to device: ${device.name ?: "Unnamed Device"} - ${device.address}, success: $success"
+                    )
+                } else {
+                    Log.e(
+                        TAG,
+                        "Characteristic not found on device: ${device.name ?: "Unnamed Device"} - ${device.address}"
+                    )
+                }
             }
         }
         device.connectGatt(app, false, gattClientCallback)
     }
-
 
 
     private class GattServerCallback : BluetoothGattServerCallback() {
@@ -291,7 +324,10 @@ object ChatServer {
                 offset,
                 value
             )
-            Log.d(TAG, "onCharacteristicWriteRequest: device=${device.address}, requestId=$requestId, characteristic=${characteristic.uuid}")
+            Log.d(
+                TAG,
+                "onCharacteristicWriteRequest: device=${device.address}, requestId=$requestId, characteristic=${characteristic.uuid}"
+            )
             if (characteristic.uuid == MESSAGE_UUID) {
                 gattServer?.sendResponse(device, requestId, BluetoothGatt.GATT_SUCCESS, 0, null)
                 val message = value?.toString(Charsets.UTF_8)
@@ -308,6 +344,8 @@ object ChatServer {
     }
 
     private fun showNotification(context: Context, message: String) {
+        val gson = Gson()
+        val msgObj = gson.fromJson(message, TransactionMessage::class.java);
         Log.d(TAG, "Preparing to show notification for message: $message")
 
         val notificationManager: NotificationManagerCompat = NotificationManagerCompat.from(context)
@@ -316,13 +354,14 @@ object ChatServer {
         val intent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
         }
-        val pendingIntent: PendingIntent = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_IMMUTABLE)
+        val pendingIntent: PendingIntent =
+            PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_IMMUTABLE)
         Log.d(TAG, "PendingIntent created")
 
         val builder = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
-            .setContentTitle("New Message")
-            .setContentText(message)
+            .setContentTitle("Send ${msgObj.amount} ${msgObj.currency} to ${msgObj.receiver.name}")
+            .setContentText(msgObj.message)
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setContentIntent(pendingIntent)
             .setAutoCancel(true)
