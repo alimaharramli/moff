@@ -28,6 +28,7 @@ import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.updatePadding
 import com.example.learningble.bluetooth.ChatServer
+import com.example.learningble.currentBalance
 import kotlinx.coroutines.launch
 
 @OptIn(ExperimentalComposeUiApi::class)
@@ -38,7 +39,7 @@ fun BroadcastForm() {
     val coroutineScope = rememberCoroutineScope()
     val focusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
-    val availableAmount = 123.45
+    val availableAmount = currentBalance
 
     DisposableEffect(Unit) {
         focusRequester.requestFocus()
@@ -86,7 +87,7 @@ fun BroadcastForm() {
         Spacer(modifier = Modifier.height(8.dp))
 
         Text(
-            text = "Available 123.45₼",
+            text = "Available $currentBalance₼",
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold,
             modifier = Modifier

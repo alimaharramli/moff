@@ -20,6 +20,7 @@ import androidx.compose.runtime.currentComposer
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -32,27 +33,19 @@ import com.example.learningble.models.TransactionMessage
 import com.example.learningble.ui.theme.LearningBLETheme
 import com.google.gson.Gson
 
-
+var deviceAddress: String? = null
+var msgObj: TransactionMessage = TransactionMessage()
+var currentAmount: String? = null
 class NotificationActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val message = intent.getStringExtra("message")
         Log.d("NOTIFICATION_MESSAGE", message.toString())
-        val msgObj = Gson().fromJson(message, TransactionMessage::class.java)
+        msgObj = Gson().fromJson(message, TransactionMessage::class.java)
 
-        val deviceAddress = intent.getStringExtra("device_address")
+        deviceAddress = intent.getStringExtra("device_address")
 
         // Use the deviceAddress to respond to the device later
-        if (deviceAddress != null) {
-            val device = ChatServer.connectedDevices[deviceAddress]
-            if (device != null) {
-                Log.d("STORED_DEVICE",device.toString())
-                // You can now interact with the device
-                val currentDevice = connectedDevices[device.address] as BluetoothDevice
-                val transaction = TransactionDto(msgObj.amount, msgObj.timestamp, msgObj.receiver.phoneNumber, PHONE_NUMBER)
-                connectToDeviceAndSendMessage(currentDevice, Gson().toJson(transaction))
-            }
-        }
 
 
         setContent {
@@ -69,6 +62,7 @@ class NotificationActivity : ComponentActivity() {
 
     @Composable
     fun NotificationScreen(message: TransactionMessage) {
+        val context = LocalContext.current
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -96,7 +90,28 @@ class NotificationActivity : ComponentActivity() {
             }
             Spacer(modifier = Modifier.height(16.dp))
             Button(
-                onClick = { /* Handle payment */ },
+                onClick = {
+                    if (deviceAddress != null) {
+                        val device = ChatServer.connectedDevices[deviceAddress]
+                        if (device != null) {
+                            Log.d("STORED_DEVICE",device.toString())
+                            // You can now interact with the device
+                            val currentDevice = connectedDevices[device.address] as BluetoothDevice
+                            val transaction = TransactionDto(msgObj.amount, msgObj.timestamp, msgObj.receiver.phoneNumber, PHONE_NUMBER, 1)
+                            connectToDeviceAndSendMessage(currentDevice, Gson().toJson(transaction))
+                        }
+                    }
+                    currentBalance -= message.amount.toDouble()
+                    val intent = Intent(context, SuccessActivity::class.java).apply {
+                        flags = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP
+                        putExtra("amount", "-" + message.amount.toString())
+                        putExtra("status", "In Progress")
+                        putExtra("cardInfo", "From m10 Balance (offline mode)")
+                        putExtra("balance", "Current balance: ${currentBalance}₼")
+                    }
+
+                    context.startActivity(intent)
+                },
                 modifier = Modifier.fillMaxWidth()
             ) {
                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
